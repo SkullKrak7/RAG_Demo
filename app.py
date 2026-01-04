@@ -78,7 +78,7 @@ Detailed Answer:"""
         input_variables=["context", "question"]
     )
     
-    search_kwargs = {'k': 3}
+    search_kwargs = {'k': 5}
     if filter_metadata:
         search_kwargs['filter'] = filter_metadata
     
