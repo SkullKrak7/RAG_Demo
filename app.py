@@ -170,6 +170,7 @@ elif demo_mode == "RAG 2: Multi-Doc Filtering":
 
 
 # RAG 3
+# RAG 3
 elif demo_mode == "RAG 3: Sensor Fusion":
     st.header("RAG 3: Sensor-Fusion Analysis")
     
@@ -191,41 +192,77 @@ elif demo_mode == "RAG 3: Sensor Fusion":
         
         violations = []
         if event['rpm'] > THRESHOLDS['rpm_max']:
-            violations.append(f"RPM {event['rpm']} exceeds {THRESHOLDS['rpm_max']}")
+            violations.append(f"RPM {event['rpm']} exceeds max {THRESHOLDS['rpm_max']}")
         if event['force_kn'] > THRESHOLDS['force_max_kn']:
-            violations.append(f"Force {event['force_kn']}kN exceeds {THRESHOLDS['force_max_kn']}kN")
+            violations.append(f"Force {event['force_kn']}kN exceeds max {THRESHOLDS['force_max_kn']}kN")
         if event['temperature_c'] > THRESHOLDS['temp_max_c']:
-            violations.append(f"Temp {event['temperature_c']}°C exceeds {THRESHOLDS['temp_max_c']}°C")
+            violations.append(f"Temperature {event['temperature_c']}C exceeds max {THRESHOLDS['temp_max_c']}C")
         
         st.warning("Violations:")
         for v in violations:
             st.write(f"- {v}")
         
-        # CHANGED: Better question format
-        question = f"""A {event['defect_type']} defect was detected in a friction stir weld with the following parameter violations:
-- RPM: {event['rpm']} (maximum allowed: {THRESHOLDS['rpm_max']})
-- Force: {event['force_kn']}kN (maximum allowed: {THRESHOLDS['force_max_kn']}kN)
-- Temperature: {event['temperature_c']}°C (maximum allowed: {THRESHOLDS['temp_max_c']}°C)
+        start_idx = max(0, selected_idx - 2)
+        end_idx = min(len(sensor_df), selected_idx + 3)
+        context_data = sensor_df.iloc[start_idx:end_idx]
+        
+        sensor_context = f"""
+Defect Type: {event['defect_type']}
+Time: {event['timestamp']}
+Threshold Violations:
+{chr(10).join(f'  - {v}' for v in violations)}
 
-Based on ISO 25239 friction stir welding standards, what is the root cause of this {event['defect_type']} defect and what corrective action should be taken?"""
+Recent Sensor Readings:
+{context_data.to_string(index=False)}
+"""
+        
+        question = f"""Based on the following sensor data, explain why a {event['defect_type']} defect occurred:
+
+{sensor_context}
+
+What is the root cause according to FSW standards?"""
         
         with st.spinner("Analyzing..."):
-            qa_chain = setup_qa_chain(st.session_state.vectorstore)
-            result = qa_chain.invoke({"query": question})
+            llm = get_llm()
             
-            # ADDED: Debug expander
-            with st.expander("🔍 Debug: Retrieved Context"):
-                st.write(f"**Question sent to LLM:**")
+            prompt_template = '''You are an FSW defect analysis expert. Use the document context to explain the defect based on the sensor data in the question.
+
+Context: {context}
+
+Question: {question}
+
+Provide a technical root cause explanation:'''
+            
+            PROMPT = PromptTemplate(
+                template=prompt_template,
+                input_variables=['context', 'question']
+            )
+            
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm,
+                chain_type='stuff',
+                retriever=st.session_state.vectorstore.as_retriever(search_kwargs={'k': 3}),
+                chain_type_kwargs={'prompt': PROMPT},
+                return_source_documents=True
+            )
+            
+            result = qa_chain.invoke({'query': question})
+            
+            with st.expander("Debug: Retrieved Context"):
+                st.write("Question sent to LLM:")
                 st.code(question)
-                st.write(f"**Retrieved {len(result['source_documents'])} chunks:**")
+                st.write(f"Retrieved {len(result['source_documents'])} chunks:")
                 for i, doc in enumerate(result['source_documents'], 1):
-                    st.write(f"**Chunk {i}:** (from {doc.metadata.get('doctype', 'unknown')})")
+                    st.write(f"Chunk {i}: (from {doc.metadata.get('doctype', 'unknown')})")
                     st.text(doc.page_content[:400])
                     st.markdown("---")
             
             st.success("Root Cause:")
             st.write(result['result'])
-
+            
+            doctypes = [doc.metadata.get('doctype', 'unknown') 
+                       for doc in result['source_documents']]
+            st.info(f"Sources: {', '.join(set(doctypes))}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("[GitHub Repo](https://github.com/SkullKrak7/RAG_Demo)")
