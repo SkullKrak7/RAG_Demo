@@ -48,7 +48,7 @@ def get_llm():
         huggingfacehub_api_token=hf_token,
         max_new_tokens=512,
         temperature=0.1,
-        provider="novita"  # ✅ Confirmed deployed
+        provider="novita"
         )
     chat_model = ChatHuggingFace(llm=llm)
     
