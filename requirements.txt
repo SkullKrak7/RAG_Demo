@@ -12,3 +12,4 @@ torch
 chromadb
 huggingface-hub
 pypdf
+langchain-chroma
