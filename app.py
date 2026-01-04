@@ -1,8 +1,8 @@
 import streamlit as st
-from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
 from langchain_classic.chains.retrieval_qa.base import RetrievalQA
 from langchain_core.prompts import PromptTemplate
+from langchain_chroma import Chroma
 import pandas as pd
 import os
 
@@ -35,21 +35,24 @@ def load_vectorstore():
     return vectorstore
 
 def get_llm():
-    """Get faster LLM"""
+    """Get LLM via HuggingFace Inference Provider"""
     hf_token = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
     
     if not hf_token:
         st.error("Set HF_TOKEN in Streamlit secrets")
         st.stop()
-    
+        
     llm = HuggingFaceEndpoint(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.2",  # Much faster than Llama
+        repo_id="meta-llama/Llama-3.2-3B-Instruct",
+        task="text-generation",
         huggingfacehub_api_token=hf_token,
+        max_new_tokens=512,
         temperature=0.1,
-        max_new_tokens=256
-    )
+        provider="novita"  # ✅ Confirmed deployed
+        )
+    chat_model = ChatHuggingFace(llm=llm)
     
-    return llm
+    return chat_model
 
 def setup_qa_chain(vectorstore, filter_metadata=None):
     """Setup QA chain"""
