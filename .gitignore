@@ -1,0 +1,20 @@
+﻿# Virtual environments
+venv/
+venv312/
+rag-demo/
+__pycache__/
+*.pyc
+
+# Vector databases
+.chromadb/
+.chromadb_multi/
+.chromadb_sensor/
+faiss_index/
+
+# Environment
+.env
+*.pkl
+
+# IDE
+.vscode/
+.idea/
