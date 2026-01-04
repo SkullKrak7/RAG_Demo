@@ -1,6 +1,0 @@
-}
-Assistant generation
-1. Insecure password hashing: The code uses MD5 for hashing passwords, which is considered insecure due to
-its vulnerability to collision attacks and its speed, allowing attackers to perform brute force attacks more
-easily. A more secure alternative would be to use bcrypt or Argon2.
-2. SQL Injection: The “fetch” function constructs an SQL query using string concatenation

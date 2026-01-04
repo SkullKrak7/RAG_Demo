@@ -6,6 +6,7 @@ from langchain_chroma import Chroma
 import pandas as pd
 import os
 
+
 st.set_page_config(
     page_title="FSW RAG Demo",
     page_icon="🔧",
@@ -13,12 +14,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+
 # Sensor thresholds
 THRESHOLDS = {
     'rpm_max': 650,
     'force_max_kn': 14.0,
     'temp_max_c': 500
 }
+
 
 @st.cache_resource
 def load_vectorstore():
@@ -34,6 +37,7 @@ def load_vectorstore():
     
     return vectorstore
 
+
 def get_llm():
     """Get LLM via HuggingFace Inference Provider"""
     hf_token = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
@@ -43,28 +47,30 @@ def get_llm():
         st.stop()
         
     llm = HuggingFaceEndpoint(
-        repo_id="meta-llama/Llama-3.2-3B-Instruct",
+        repo_id="mistralai/Mistral-7B-Instruct-v0.3",  # CHANGED: Better model
         task="text-generation",
         huggingfacehub_api_token=hf_token,
         max_new_tokens=512,
         temperature=0.1,
         provider="novita"
-        )
+    )
     chat_model = ChatHuggingFace(llm=llm)
     
     return chat_model
+
 
 def setup_qa_chain(vectorstore, filter_metadata=None):
     """Setup QA chain"""
     llm = get_llm()
     
-    prompt_template = """Use the context to answer concisely. If unknown, say "I don't know."
+    # CHANGED: Better prompt that forces use of context
+    prompt_template = """You are an expert in friction stir welding. Use the following context from ISO 25239 standards and operational procedures to answer the question. Be specific about root causes and corrective actions.
 
 Context: {context}
 
 Question: {question}
 
-Answer:"""
+Detailed Answer:"""
     
     PROMPT = PromptTemplate(
         template=prompt_template,
@@ -85,9 +91,11 @@ Answer:"""
     
     return qa_chain
 
+
 # Sidebar
 st.sidebar.title("🔧 FSW Defect Analysis")
 st.sidebar.markdown("**RAG Demo by Karthik Kagolanu**")
+
 
 demo_mode = st.sidebar.radio(
     "Select Demo:",
@@ -95,15 +103,18 @@ demo_mode = st.sidebar.radio(
     index=0
 )
 
+
 # Main content
 st.title("Friction Stir Welding RAG Demo")
 st.markdown("*Retrieval-Augmented Generation for FSW defect analysis*")
 st.markdown("---")
 
+
 # Load vectorstore once
 if 'vectorstore' not in st.session_state:
     with st.spinner("Loading vector store..."):
         st.session_state.vectorstore = load_vectorstore()
+
 
 # RAG 1
 if demo_mode == "RAG 1: Simple QA":
@@ -122,6 +133,7 @@ if demo_mode == "RAG 1: Simple QA":
                 
                 with st.expander("View Sources"):
                     st.write(f"{len(result['source_documents'])} chunks used")
+
 
 # RAG 2
 elif demo_mode == "RAG 2: Multi-Doc Filtering":
@@ -155,6 +167,7 @@ elif demo_mode == "RAG 2: Multi-Doc Filtering":
                     doctypes = [doc.metadata.get('doctype') for doc in result['source_documents']]
                     st.write(f"Types: {', '.join(set(doctypes))}")
 
+
 # RAG 3
 elif demo_mode == "RAG 3: Sensor Fusion":
     st.header("RAG 3: Sensor-Fusion Analysis")
@@ -187,14 +200,31 @@ elif demo_mode == "RAG 3: Sensor Fusion":
         for v in violations:
             st.write(f"- {v}")
         
-        question = f"Explain why {event['defect_type']} defect occurred given: {', '.join(violations)}"
+        # CHANGED: Better question format
+        question = f"""A {event['defect_type']} defect was detected in a friction stir weld with the following parameter violations:
+- RPM: {event['rpm']} (maximum allowed: {THRESHOLDS['rpm_max']})
+- Force: {event['force_kn']}kN (maximum allowed: {THRESHOLDS['force_max_kn']}kN)
+- Temperature: {event['temperature_c']}°C (maximum allowed: {THRESHOLDS['temp_max_c']}°C)
+
+Based on ISO 25239 friction stir welding standards, what is the root cause of this {event['defect_type']} defect and what corrective action should be taken?"""
         
         with st.spinner("Analyzing..."):
             qa_chain = setup_qa_chain(st.session_state.vectorstore)
             result = qa_chain.invoke({"query": question})
             
+            # ADDED: Debug expander
+            with st.expander("🔍 Debug: Retrieved Context"):
+                st.write(f"**Question sent to LLM:**")
+                st.code(question)
+                st.write(f"**Retrieved {len(result['source_documents'])} chunks:**")
+                for i, doc in enumerate(result['source_documents'], 1):
+                    st.write(f"**Chunk {i}:** (from {doc.metadata.get('doctype', 'unknown')})")
+                    st.text(doc.page_content[:400])
+                    st.markdown("---")
+            
             st.success("Root Cause:")
             st.write(result['result'])
+
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("[GitHub Repo](https://github.com/SkullKrak7/RAG_Demo)")

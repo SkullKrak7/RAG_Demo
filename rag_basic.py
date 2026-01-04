@@ -74,7 +74,7 @@ Answer:'''
 
 
 def main():
-    pdf_path = 'sample_manual.pdf'
+    pdf_path = 'data/sample_manual.pdf'
     
     if not Path(pdf_path).exists():
         print(f'ERROR: {pdf_path} not found!')
