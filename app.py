@@ -43,7 +43,7 @@ def get_llm():
         st.stop()
     
     llm = HuggingFaceEndpoint(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.2"",  # Much faster than Llama
+        repo_id="mistralai/Mistral-7B-Instruct-v0.2",  # Much faster than Llama
         huggingfacehub_api_token=hf_token,
         temperature=0.1,
         max_new_tokens=256
