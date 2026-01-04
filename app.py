@@ -47,13 +47,14 @@ def get_llm():
         st.stop()
         
     llm = HuggingFaceEndpoint(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.3",  # CHANGED: Better model
-        task="text-generation",
-        huggingfacehub_api_token=hf_token,
-        max_new_tokens=512,
-        temperature=0.1,
-        provider="novita"
-    )
+            repo_id="meta-llama/Llama-3.2-3B-Instruct",
+            task="text-generation",
+            huggingfacehub_api_token=hf_token,
+            max_new_tokens=512,
+            temperature=0.1,
+            provider="novita"
+            )
+    
     chat_model = ChatHuggingFace(llm=llm)
     
     return chat_model
