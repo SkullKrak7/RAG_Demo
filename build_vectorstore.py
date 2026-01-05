@@ -6,20 +6,22 @@ from langchain_huggingface import HuggingFaceEmbeddings
 def build_vectorstore():
     """Build vector store once and persist it"""
     documents = []
-    
-    # Load PDFs
-    for pdf_file, doc_type in [
-        ('doc1_standards.pdf', 'iso_standard'),
-        ('doc2_manual.pdf', 'manual'),
-        ('doc3_procedures.pdf', 'procedure')
-    ]:
+
+    pdf_files = [
+        'fsw_doc1.pdf',  # ISO 25239-5
+        'fsw_doc2.pdf',  # FSW-Tech Handbook
+        'fsw_doc3.pdf',  # Defects Review
+        'fsw_doc4.pdf',  # PhD Thesis
+        'fsw_doc5.pdf'   # NDE Paper
+    ]
+
+    for pdf_file in pdf_files:
         print(f"Loading {pdf_file}...")
         loader = PyPDFLoader(f'data/{pdf_file}')
         docs = loader.load()
-        for doc in docs:
-            doc.metadata['doctype'] = doc_type
+        print(f"  → Loaded {len(docs)} pages")
         documents.extend(docs)
-    
+        
     print(f"Loaded {len(documents)} pages")
     
     # Split
