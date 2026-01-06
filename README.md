@@ -2,6 +2,10 @@
 
 A Retrieval-Augmented Generation (RAG) system for intelligent defect analysis in Friction Stir Welding (FSW) processes, combining document retrieval with real-time sensor data analysis.
 
+[![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rag-demo-skullkrak7.streamlit.app/)
+
+🌐 Access the live app: [https://rag-demo-skullkrak7.streamlit.app/](https://rag-demo-skullkrak7.streamlit.app/)
+
 ## Overview
 
 FSW RAG Demo demonstrates three progressive implementations of RAG systems for FSW defect analysis:
