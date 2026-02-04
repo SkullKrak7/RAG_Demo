@@ -75,18 +75,32 @@ class VectorStoreBuilder:
         
         return vectorstore
     
-    def load_vectorstore(self, persist_directory: Optional[str] = None) -> Chroma:
-        """Load existing vector store."""
+    def load_vectorstore(self, persist_directory: Optional[str] = None) -> tuple[Chroma, List[Document]]:
+        """Load existing vector store and reconstruct documents."""
         embeddings = self._get_embeddings()
         persist_dir = persist_directory or self.config.vectorstore_path
         
         if not Path(persist_dir).exists():
             raise ConfigurationError(f"Vector store not found: {persist_dir}")
         
-        return Chroma(
+        vectorstore = Chroma(
             persist_directory=persist_dir,
             embedding_function=embeddings
         )
+        
+        # Reconstruct documents from vectorstore
+        collection = vectorstore.get()
+        documents = []
+        
+        if collection and collection['ids']:
+            for i, doc_id in enumerate(collection['ids']):
+                doc = Document(
+                    page_content=collection['documents'][i],
+                    metadata=collection['metadatas'][i] if collection['metadatas'] else {}
+                )
+                documents.append(doc)
+        
+        return vectorstore, documents
     
     def build_from_pdfs(
         self,
