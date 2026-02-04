@@ -152,14 +152,24 @@ def test_load_vectorstore_raises_on_missing_directory(mock_embeddings, mock_chro
 def test_load_vectorstore_loads_existing(mock_embeddings, mock_chroma, builder, tmp_path):
     """Load vectorstore loads existing Chroma instance."""
     mock_embeddings.return_value = Mock()
-    mock_chroma.return_value = Mock()
+    
+    mock_vectorstore = Mock()
+    mock_vectorstore.get.return_value = {
+        'ids': ['id1', 'id2'],
+        'documents': ['Content 1', 'Content 2'],
+        'metadatas': [{'source': 'doc1.pdf'}, {'source': 'doc2.pdf'}]
+    }
+    mock_chroma.return_value = mock_vectorstore
     
     persist_dir = tmp_path / "vectorstore"
     persist_dir.mkdir()
     
-    vectorstore = builder.load_vectorstore(str(persist_dir))
+    vectorstore, documents = builder.load_vectorstore(str(persist_dir))
     
     assert vectorstore is not None
+    assert len(documents) == 2
+    assert documents[0].page_content == 'Content 1'
+    assert documents[0].metadata['source'] == 'doc1.pdf'
     mock_chroma.assert_called_once()
 
 
