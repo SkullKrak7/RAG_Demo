@@ -1,12 +1,14 @@
 """Test configuration module."""
 
+import os
 import pytest
 from pydantic import ValidationError
 from rag_demo.core.config import RAGConfig
 
 
-def test_config_requires_hf_token():
+def test_config_requires_hf_token(monkeypatch):
     """HF token is required."""
+    monkeypatch.delenv("HF_TOKEN", raising=False)
     with pytest.raises(ValidationError):
         RAGConfig()
 
