@@ -37,6 +37,59 @@ Auto-deploys to Streamlit Cloud on main branch push.
 
 ## Local Development
 
+### Initial Setup
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# Install git hooks
+./setup-hooks.sh
+```
+
+### Before Pushing
+
+**Always run local quality checks:**
+
+```bash
+./check-quality.sh
+```
+
+This will:
+1. Format code with Black
+2. Run full test suite (90% coverage required)
+3. Lint with Pylint
+4. Security scan with Bandit
+
+**Or run individually:**
+
+```bash
+# Format
+black rag_demo/ tests/
+
+# Test
+pytest tests/ -v --cov=rag_demo --cov-fail-under=90
+
+# Lint
+pylint rag_demo/ --disable=C0114,C0115,C0116,R0913,R0914
+
+# Security
+bandit -r rag_demo/ -ll
+```
+
+### Git Hooks
+
+Pre-commit hook automatically runs:
+- Code formatting check
+- Full test suite
+- Security scan
+
+**Skip hooks (not recommended):**
+```bash
+git commit --no-verify
+```
+
 ### Run Tests
 ```bash
 pytest tests/ -v --cov=rag_demo
