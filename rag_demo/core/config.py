@@ -11,7 +11,7 @@ class RAGConfig(BaseSettings):
     hf_token: SecretStr = Field(..., description="HuggingFace API token")
     model_name: str = Field(default="meta-llama/Llama-3.1-8B-Instruct")
     temperature: float = Field(default=0.05, ge=0.0, le=1.0)
-    max_tokens: int = Field(default=512, ge=1, le=4096)
+    max_tokens: int = Field(default=1024, ge=1, le=4096)
 
     embedding_model: str = Field(default="sentence-transformers/paraphrase-MiniLM-L3-v2")
 
