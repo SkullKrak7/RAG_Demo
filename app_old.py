@@ -1,9 +1,7 @@
-"""Streamlit UI for FSW RAG system with conversation memory and sensor analysis."""
+"""Streamlit UI for FSW RAG system."""
 
 import streamlit as st
 from pathlib import Path
-import pandas as pd
-from datetime import datetime
 
 from rag_demo.core.config import RAGConfig
 from rag_demo.core.exceptions import RetrievalError, GenerationError
@@ -25,7 +23,9 @@ def load_config():
 def initialize_system(_config):
     """Initialize RAG system components."""
     builder = VectorStoreBuilder(_config)
+
     vectorstore, documents = builder.load_vectorstore()
+
     retriever = HybridRetriever(vectorstore, documents, _config)
 
     tracer = None
@@ -33,55 +33,8 @@ def initialize_system(_config):
         tracer = RAGTracer(_config)
 
     pipeline = RAGPipeline(retriever, _config, tracer=tracer)
+
     return pipeline, tracer
-
-
-@st.cache_data
-def load_sensor_data():
-    """Load sensor data from CSV."""
-    sensor_file = Path("data/sensor_log.csv")
-    if sensor_file.exists():
-        return pd.read_csv(sensor_file)
-    return None
-
-
-def analyze_sensor_context(df, query):
-    """Generate sensor data context for query."""
-    if df is None:
-        return ""
-
-    defect_counts = df["defect_type"].value_counts()
-    total_readings = len(df)
-    defect_readings = len(df[df["defect_type"] != "none"])
-
-    context = f"\n\nSensor Data Summary:\n"
-    context += f"- Total readings: {total_readings}\n"
-    context += f"- Defect occurrences: {defect_readings}\n"
-    context += f"- Defect types: {', '.join(defect_counts.index.tolist())}\n"
-
-    if "defect" in query.lower():
-        recent_defects = df[df["defect_type"] != "none"].tail(5)
-        if not recent_defects.empty:
-            context += f"\nRecent defects detected:\n"
-            for _, row in recent_defects.iterrows():
-                context += f"- {row['defect_type']}: RPM={row['rpm']}, Force={row['force_kn']}kN, Temp={row['temperature_c']}°C\n"
-
-    return context
-
-
-def get_conversation_context(messages, max_turns=3):
-    """Get last N conversation turns for context."""
-    if len(messages) <= 1:
-        return ""
-
-    recent = messages[-(max_turns * 2) :]
-    context = "\n\nPrevious conversation:\n"
-    for msg in recent:
-        role = msg["role"].capitalize()
-        content = msg["content"][:200]
-        context += f"{role}: {content}...\n"
-
-    return context
 
 
 def render_source(source, index):
@@ -100,38 +53,17 @@ def main():
         "Ask questions about friction stir welding defects, root causes, and corrective actions."
     )
 
-    # Initialize session state
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    # Sidebar
-    with st.sidebar:
-        st.header("Session Info")
-        st.caption(f"Session ID: {st.session_state.session_id}")
-        st.caption(f"Messages: {len(st.session_state.messages)}")
-
-        if st.button("Clear Conversation"):
-            st.session_state.messages = []
-            st.rerun()
-
-        st.divider()
-        st.caption(
-            "Note: Conversation history is temporary and deleted when you close the browser."
-        )
-
-    # Load system
     try:
         config = load_config()
         pipeline, tracer = initialize_system(config)
-        sensor_df = load_sensor_data()
     except Exception as e:
         st.error(f"Failed to initialize system: {e}")
         st.info("Make sure vector store exists. Run document ingestion first.")
         return
 
-    # Display conversation history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -140,7 +72,6 @@ def main():
                 for i, source in enumerate(message["sources"], 1):
                     render_source(source, i)
 
-    # Chat input
     if prompt := st.chat_input("Ask about FSW defects..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -152,21 +83,8 @@ def main():
             full_response = ""
 
             try:
-                # Add conversation context
-                conv_context = get_conversation_context(st.session_state.messages)
-
-                # Add sensor context if relevant
-                sensor_context = analyze_sensor_context(sensor_df, prompt)
-
-                # Augment query with context
-                augmented_query = prompt
-                if conv_context:
-                    augmented_query = f"{prompt}{conv_context}"
-                if sensor_context:
-                    augmented_query = f"{augmented_query}{sensor_context}"
-
                 with st.spinner("Retrieving relevant documents..."):
-                    response = pipeline.query(augmented_query, stream=True)
+                    response = pipeline.query(prompt, stream=True)
 
                 for chunk in response.answer:
                     full_response += chunk
@@ -184,26 +102,18 @@ def main():
                 )
 
                 st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": full_response,
-                        "sources": response.sources,
-                    }
+                    {"role": "assistant", "content": full_response, "sources": response.sources}
                 )
 
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    if st.button(
-                        "Helpful", key=f"up_{len(st.session_state.messages)}"
-                    ):
+                    if st.button("Helpful", key=f"up_{len(st.session_state.messages)}"):
                         if tracer:
                             tracer.score_feedback(1.0, "user_feedback")
                         st.success("Feedback recorded!")
 
                 with col2:
-                    if st.button(
-                        "Not Helpful", key=f"down_{len(st.session_state.messages)}"
-                    ):
+                    if st.button("Not Helpful", key=f"down_{len(st.session_state.messages)}"):
                         if tracer:
                             tracer.score_feedback(0.0, "user_feedback")
                         st.info("Feedback recorded!")
@@ -214,6 +124,22 @@ def main():
                 st.error(f"Generation failed: {e}")
             except Exception as e:
                 st.error(f"Unexpected error: {e}")
+
+    with st.sidebar:
+        st.header("System Configuration")
+        st.metric("Model", config.model_name.split("/")[-1])
+        st.metric("Temperature", config.temperature)
+        st.metric("Retrieval K", config.retrieval_k)
+        st.metric("Rerank Top K", config.rerank_top_k)
+
+        if config.langfuse_enabled:
+            st.success("Langfuse Tracing: Enabled")
+        else:
+            st.info("Langfuse Tracing: Disabled")
+
+        if st.button("Clear Chat History"):
+            st.session_state.messages = []
+            st.rerun()
 
 
 if __name__ == "__main__":
