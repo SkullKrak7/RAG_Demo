@@ -19,9 +19,14 @@ class Source:
 class RAGResponse:
     """Complete RAG pipeline response."""
     
+    query: str
     answer: str
     sources: List[Source]
-    confidence: float
-    faithfulness_score: Optional[float]
-    latency_ms: float
-    metadata: Dict[str, Any]
+    confidence: float = 1.0
+    faithfulness_score: Optional[float] = None
+    latency_ms: float = 0.0
+    metadata: Dict[str, Any] = None
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}

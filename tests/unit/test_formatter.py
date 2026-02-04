@@ -37,26 +37,35 @@ def test_format_sources_handles_missing_metadata():
 
 def test_create_response_builds_complete_response():
     """Create response builds complete RAG response."""
-    docs = [
-        Document(
-            page_content="Content",
-            metadata={"source": "test.pdf", "page": 1, "score": 0.9}
+    sources = [
+        Source(
+            doc_name="test.pdf",
+            page_num=1,
+            chunk_text="Content",
+            relevance_score=0.9,
+            metadata={"source": "test.pdf"}
         )
     ]
     
     response = ResponseFormatter.create_response(
+        query="Test query",
         answer="Test answer",
-        documents=docs,
+        sources=sources,
+        retrieved_count=5,
+        reranked_count=3,
         latency_ms=150.0,
         confidence=0.85,
         faithfulness_score=0.92
     )
     
+    assert response.query == "Test query"
     assert response.answer == "Test answer"
     assert len(response.sources) == 1
     assert response.confidence == 0.85
     assert response.faithfulness_score == 0.92
     assert response.latency_ms == 150.0
+    assert response.metadata["retrieved_count"] == 5
+    assert response.metadata["reranked_count"] == 3
 
 
 def test_format_citation_with_page():

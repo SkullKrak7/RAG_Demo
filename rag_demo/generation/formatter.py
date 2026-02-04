@@ -28,23 +28,31 @@ class ResponseFormatter:
     
     @staticmethod
     def create_response(
+        query: str,
         answer: str,
-        documents: List[Document],
-        latency_ms: float,
+        sources: List[Source],
+        retrieved_count: int = 0,
+        reranked_count: int = 0,
+        latency_ms: float = 0.0,
         confidence: float = 1.0,
         faithfulness_score: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> RAGResponse:
         """Create complete RAG response with citations."""
-        sources = ResponseFormatter.format_sources(documents)
+        response_metadata = metadata or {}
+        response_metadata.update({
+            "retrieved_count": retrieved_count,
+            "reranked_count": reranked_count
+        })
         
         return RAGResponse(
+            query=query,
             answer=answer,
             sources=sources,
             confidence=confidence,
             faithfulness_score=faithfulness_score,
             latency_ms=latency_ms,
-            metadata=metadata or {}
+            metadata=response_metadata
         )
     
     @staticmethod
