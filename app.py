@@ -80,12 +80,17 @@ def main():
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
+            full_response = ""
 
             try:
                 with st.spinner("Retrieving relevant documents..."):
-                    response = pipeline.query(prompt, stream=False)
+                    response = pipeline.query(prompt, stream=True)
 
-                message_placeholder.markdown(response.answer)
+                for chunk in response.answer:
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
+
+                message_placeholder.markdown(full_response)
 
                 st.markdown("**Sources:**")
                 for i, source in enumerate(response.sources, 1):
@@ -97,18 +102,18 @@ def main():
                 )
 
                 st.session_state.messages.append(
-                    {"role": "assistant", "content": response.answer, "sources": response.sources}
+                    {"role": "assistant", "content": full_response, "sources": response.sources}
                 )
 
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    if st.button("👍 Helpful", key=f"up_{len(st.session_state.messages)}"):
+                    if st.button("Helpful", key=f"up_{len(st.session_state.messages)}"):
                         if tracer:
                             tracer.score_feedback(1.0, "user_feedback")
                         st.success("Feedback recorded!")
 
                 with col2:
-                    if st.button("👎 Not Helpful", key=f"down_{len(st.session_state.messages)}"):
+                    if st.button("Not Helpful", key=f"down_{len(st.session_state.messages)}"):
                         if tracer:
                             tracer.score_feedback(0.0, "user_feedback")
                         st.info("Feedback recorded!")
