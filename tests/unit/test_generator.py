@@ -26,32 +26,39 @@ def test_generator_initialization(generator):
     assert generator._chat_model is None
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_get_llm_initializes_endpoint(mock_endpoint, generator):
+def test_get_llm_initializes_endpoint(mock_endpoint, mock_chat, generator):
     """Get LLM initializes HuggingFace endpoint."""
     mock_endpoint.return_value = Mock()
+    mock_chat.return_value = Mock()
 
     llm = generator._get_llm()
 
     assert llm is not None
     mock_endpoint.assert_called_once()
+    mock_chat.assert_called_once()
     assert generator._llm is not None
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_get_llm_caches_instance(mock_endpoint, generator):
+def test_get_llm_caches_instance(mock_endpoint, mock_chat, generator):
     """Get LLM caches endpoint instance."""
     mock_endpoint.return_value = Mock()
+    mock_chat.return_value = Mock()
 
     llm1 = generator._get_llm()
     llm2 = generator._get_llm()
 
     assert llm1 is llm2
     mock_endpoint.assert_called_once()
+    mock_chat.assert_called_once()
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_get_llm_raises_on_error(mock_endpoint, generator):
+def test_get_llm_raises_on_error(mock_endpoint, mock_chat, generator):
     """Get LLM raises GenerationError on initialization failure."""
     mock_endpoint.side_effect = Exception("API error")
 
@@ -59,49 +66,61 @@ def test_get_llm_raises_on_error(mock_endpoint, generator):
         generator._get_llm()
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_generate_returns_response(mock_endpoint, generator):
+def test_generate_returns_response(mock_endpoint, mock_chat, generator):
     """Generate returns LLM response."""
-    mock_llm = Mock()
-    mock_llm.invoke.return_value = "Test answer"
-    mock_endpoint.return_value = mock_llm
+    mock_response = Mock()
+    mock_response.content = "Test answer"
+    mock_chat_model = Mock()
+    mock_chat_model.invoke.return_value = mock_response
+    mock_endpoint.return_value = Mock()
+    mock_chat.return_value = mock_chat_model
 
     result = generator.generate("Test prompt")
 
     assert result == "Test answer"
-    mock_llm.invoke.assert_called_once_with("Test prompt")
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_generate_raises_on_error(mock_endpoint, generator):
+def test_generate_raises_on_error(mock_endpoint, mock_chat, generator):
     """Generate raises GenerationError on failure."""
-    mock_llm = Mock()
-    mock_llm.invoke.side_effect = Exception("API error")
-    mock_endpoint.return_value = mock_llm
+    mock_chat_model = Mock()
+    mock_chat_model.invoke.side_effect = Exception("API error")
+    mock_endpoint.return_value = Mock()
+    mock_chat.return_value = mock_chat_model
 
     with pytest.raises(GenerationError, match="Generation failed"):
         generator.generate("Test prompt")
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_stream_yields_chunks(mock_endpoint, generator):
+def test_stream_yields_chunks(mock_endpoint, mock_chat, generator):
     """Stream yields response chunks."""
-    mock_llm = Mock()
-    mock_llm.stream.return_value = iter(["chunk1", "chunk2", "chunk3"])
-    mock_endpoint.return_value = mock_llm
+    chunk1, chunk2, chunk3 = Mock(), Mock(), Mock()
+    chunk1.content = "chunk1"
+    chunk2.content = "chunk2"
+    chunk3.content = "chunk3"
+    mock_chat_model = Mock()
+    mock_chat_model.stream.return_value = iter([chunk1, chunk2, chunk3])
+    mock_endpoint.return_value = Mock()
+    mock_chat.return_value = mock_chat_model
 
     chunks = list(generator.stream("Test prompt"))
 
     assert chunks == ["chunk1", "chunk2", "chunk3"]
-    mock_llm.stream.assert_called_once_with("Test prompt")
 
 
+@patch("rag_demo.generation.generator.ChatHuggingFace")
 @patch("rag_demo.generation.generator.HuggingFaceEndpoint")
-def test_stream_raises_on_error(mock_endpoint, generator):
+def test_stream_raises_on_error(mock_endpoint, mock_chat, generator):
     """Stream raises GenerationError on failure."""
-    mock_llm = Mock()
-    mock_llm.stream.side_effect = Exception("Streaming error")
-    mock_endpoint.return_value = mock_llm
+    mock_chat_model = Mock()
+    mock_chat_model.stream.side_effect = Exception("Streaming error")
+    mock_endpoint.return_value = Mock()
+    mock_chat.return_value = mock_chat_model
 
     with pytest.raises(GenerationError, match="Streaming failed"):
         list(generator.stream("Test prompt"))

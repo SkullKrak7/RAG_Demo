@@ -3,6 +3,7 @@
 from typing import Iterator, Optional
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage
 
 from rag_demo.core.config import RAGConfig
 from rag_demo.core.exceptions import GenerationError
@@ -16,44 +17,42 @@ class LLMGenerator:
         self._llm = None
         self._chat_model = None
 
-    def _get_llm(self) -> HuggingFaceEndpoint:
-        """Initialize LLM endpoint."""
+    def _get_llm(self) -> ChatHuggingFace:
+        """Initialize chat model for conversational task."""
         if self._llm is None:
             try:
-                self._llm = HuggingFaceEndpoint(
+                endpoint = HuggingFaceEndpoint(
                     repo_id=self.config.model_name,
-                    task="text-generation",
                     huggingfacehub_api_token=self.config.hf_token.get_secret_value(),
                     max_new_tokens=self.config.max_tokens,
                     temperature=self.config.temperature,
                 )
+                self._llm = ChatHuggingFace(llm=endpoint)
             except Exception as e:
                 raise GenerationError(f"Failed to initialize LLM: {e}")
 
         return self._llm
 
     def _get_chat_model(self) -> ChatHuggingFace:
-        """Initialize chat model wrapper."""
-        if self._chat_model is None:
-            llm = self._get_llm()
-            self._chat_model = ChatHuggingFace(llm=llm)
-
-        return self._chat_model
+        """Get chat model (same as _get_llm now)."""
+        return self._get_llm()
 
     def generate(self, prompt: str) -> str:
         """Generate response without streaming."""
         try:
-            llm = self._get_llm()
-            return llm.invoke(prompt)
+            chat_model = self._get_llm()
+            response = chat_model.invoke([HumanMessage(content=prompt)])
+            return response.content
         except Exception as e:
             raise GenerationError(f"Generation failed: {e}")
 
     def stream(self, prompt: str) -> Iterator[str]:
         """Generate response with streaming."""
         try:
-            llm = self._get_llm()
-            for chunk in llm.stream(prompt):
-                yield chunk
+            chat_model = self._get_llm()
+            for chunk in chat_model.stream([HumanMessage(content=prompt)]):
+                if hasattr(chunk, "content"):
+                    yield chunk.content
         except Exception as e:
             raise GenerationError(f"Streaming failed: {e}")
 
