@@ -20,6 +20,7 @@ class RAGConfig(BaseSettings):
     
     retrieval_k: int = Field(default=5, ge=1, le=20)
     rerank_top_k: int = Field(default=3, ge=1, le=10)
+    reranker_model: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
     
     query_strategy: Literal["multi_query", "hyde", "step_back"] = "multi_query"
     num_query_variations: int = Field(default=3, ge=1, le=5)
