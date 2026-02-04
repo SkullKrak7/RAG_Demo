@@ -69,7 +69,7 @@ def analyze_sensor_context(df, query):
     return context
 
 
-def get_conversation_context(messages, max_turns=3):
+def get_conversation_context(messages, max_turns=10):
     """Get last N conversation turns for context."""
     if len(messages) <= 1:
         return ""
@@ -110,7 +110,22 @@ def main():
     with st.sidebar:
         st.header("Session Info")
         st.caption(f"Session ID: {st.session_state.session_id}")
-        st.caption(f"Messages: {len(st.session_state.messages)}")
+        
+        # Message counter
+        total_messages = len(st.session_state.messages)
+        user_messages = len([m for m in st.session_state.messages if m["role"] == "user"])
+        st.metric("Messages in conversation", total_messages)
+        st.metric("Your questions", user_messages)
+        
+        # Memory retention indicator
+        max_memory_turns = 10
+        if user_messages > max_memory_turns:
+            st.warning(f"⚠️ Remembering last {max_memory_turns} turns only")
+            st.caption(f"Older messages: {user_messages - max_memory_turns}")
+        else:
+            remaining = max_memory_turns - user_messages
+            st.success(f"✓ Full memory active")
+            st.caption(f"Remaining turns: {remaining}")
 
         if st.button("Clear Conversation"):
             st.session_state.messages = []
