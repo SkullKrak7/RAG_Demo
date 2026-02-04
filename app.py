@@ -1,268 +1,149 @@
+"""Streamlit UI for FSW RAG system."""
+
 import streamlit as st
-from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
-from langchain_classic.chains.retrieval_qa.base import RetrievalQA
-from langchain_core.prompts import PromptTemplate
-from langchain_chroma import Chroma
-import pandas as pd
-import os
+from pathlib import Path
+
+from rag_demo.core.config import RAGConfig
+from rag_demo.core.exceptions import RetrievalError, GenerationError
+from rag_demo.ingestion.builder import VectorStoreBuilder
+from rag_demo.retrieval.retriever import HybridRetriever
+from rag_demo.pipeline.pipeline import RAGPipeline
+from rag_demo.observability.tracer import RAGTracer
 
 
 st.set_page_config(
-    page_title="FSW RAG Demo",
+    page_title="FSW Defect Analysis RAG",
     page_icon="🔧",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
-
-
-# Sensor thresholds
-THRESHOLDS = {
-    'rpm_max': 650,
-    'force_max_kn': 14.0,
-    'temp_max_c': 500
-}
 
 
 @st.cache_resource
-def load_vectorstore():
-    """Load pre-built vector store (instant!)"""
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-MiniLM-L3-v2"
-    )
-    
-    vectorstore = Chroma(
-        persist_directory="./vectorstore",
-        embedding_function=embeddings
-    )
-    
-    return vectorstore
+def load_config():
+    """Load configuration."""
+    return RAGConfig()
 
 
-def get_llm():
-    """Get LLM via HuggingFace Inference Provider"""
-    hf_token = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
+@st.cache_resource
+def initialize_system(_config):
+    """Initialize RAG system components."""
+    builder = VectorStoreBuilder(_config)
     
-    if not hf_token:
-        st.error("Set HF_TOKEN in Streamlit secrets")
-        st.stop()
+    vectorstore = builder.load_vectorstore()
+    
+    documents = []
+    for doc_id in vectorstore.get()["ids"]:
+        doc = vectorstore.get(ids=[doc_id])
+        documents.append(doc)
+    
+    retriever = HybridRetriever(vectorstore, documents, _config)
+    
+    tracer = None
+    if _config.langfuse_enabled:
+        tracer = RAGTracer(_config)
+    
+    pipeline = RAGPipeline(retriever, _config, tracer=tracer)
+    
+    return pipeline, tracer
+
+
+def render_source(source, index):
+    """Render single source citation."""
+    with st.expander(f"Source {index}: {source.doc_name}"):
+        if source.page_num:
+            st.caption(f"Page {source.page_num}")
+        st.caption(f"Relevance Score: {source.relevance_score:.3f}")
+        st.text(source.chunk_text)
+
+
+def main():
+    """Main Streamlit application."""
+    st.title("🔧 FSW Defect Analysis RAG System")
+    st.markdown("Ask questions about friction stir welding defects, root causes, and corrective actions.")
+    
+    try:
+        config = load_config()
+        pipeline, tracer = initialize_system(config)
+    except Exception as e:
+        st.error(f"Failed to initialize system: {e}")
+        st.info("Make sure vector store exists. Run document ingestion first.")
+        return
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if "sources" in message:
+                st.markdown("**Sources:**")
+                for i, source in enumerate(message["sources"], 1):
+                    render_source(source, i)
+    
+    if prompt := st.chat_input("Ask about FSW defects..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
         
-    llm = HuggingFaceEndpoint(
-        repo_id="meta-llama/Llama-3.1-8B-Instruct",
-        task="text-generation",
-        huggingfacehub_api_token=hf_token,
-        max_new_tokens=512,
-        temperature=0.05,
-        provider="novita"
-        )
-    
-    chat_model = ChatHuggingFace(llm=llm)
-    
-    return chat_model
-
-
-def setup_qa_chain(vectorstore, filter_metadata=None):
-    """Setup QA chain"""
-    llm = get_llm()
-    
-    # CHANGED: Better prompt that forces use of context
-    prompt_template = """You are an expert in friction stir welding. Use the following context from ISO 25239 standards and operational procedures to answer the question. Be specific about root causes and corrective actions.
-
-Context: {context}
-
-Question: {question}
-
-Detailed Answer:"""
-    
-    PROMPT = PromptTemplate(
-        template=prompt_template,
-        input_variables=["context", "question"]
-    )
-    
-    search_kwargs = {'k': 5}
-    if filter_metadata:
-        search_kwargs['filter'] = filter_metadata
-    
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vectorstore.as_retriever(search_kwargs=search_kwargs),
-        chain_type_kwargs={"prompt": PROMPT},
-        return_source_documents=True
-    )
-    
-    return qa_chain
-
-
-# Sidebar
-st.sidebar.title("🔧 FSW Defect Analysis")
-st.sidebar.markdown("**RAG Demo by Karthik Kagolanu**")
-
-
-demo_mode = st.sidebar.radio(
-    "Select Demo:",
-    ["RAG 1: Simple QA", "RAG 2: Multi-Doc Filtering", "RAG 3: Sensor Fusion"],
-    index=0
-)
-
-
-# Main content
-st.title("Friction Stir Welding RAG Demo")
-st.markdown("*Retrieval-Augmented Generation for FSW defect analysis*")
-st.markdown("---")
-
-
-# Load vectorstore once
-if 'vectorstore' not in st.session_state:
-    with st.spinner("Loading vector store..."):
-        st.session_state.vectorstore = load_vectorstore()
-
-
-# RAG 1
-if demo_mode == "RAG 1: Simple QA":
-    st.header("RAG 1: Basic Document QA")
-    
-    question = st.text_input("Ask about FSW processes:", key="rag1")
-    
-    if st.button("Get Answer", key="btn1"):
-        if question:
-            with st.spinner("Generating answer..."):
-                qa_chain = setup_qa_chain(st.session_state.vectorstore)
-                result = qa_chain.invoke({"query": question})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            
+            try:
+                with st.spinner("Retrieving relevant documents..."):
+                    response = pipeline.query(prompt, stream=False)
                 
-                st.success("Answer:")
-                st.write(result['result'])
+                message_placeholder.markdown(response.answer)
                 
-                with st.expander("View Sources"):
-                    st.write(f"{len(result['source_documents'])} chunks used")
-
-
-# RAG 2
-elif demo_mode == "RAG 2: Multi-Doc Filtering":
-    st.header("RAG 2: Document Filtering")
-    
-    doc_filter = st.selectbox(
-        "Filter documents:",
-        ["All", "ISO Standards", "Manuals", "Procedures"]
-    )
-    
-    question = st.text_input("Ask your question:", key="rag2")
-    
-    if st.button("Get Answer", key="btn2"):
-        if question:
-            filter_metadata = None
-            if "Standards" in doc_filter:
-                filter_metadata = {'doctype': 'iso_standard'}
-            elif "Manuals" in doc_filter:
-                filter_metadata = {'doctype': 'manual'}
-            elif "Procedures" in doc_filter:
-                filter_metadata = {'doctype': 'procedure'}
-            
-            with st.spinner("Searching..."):
-                qa_chain = setup_qa_chain(st.session_state.vectorstore, filter_metadata)
-                result = qa_chain.invoke({"query": question})
+                st.markdown("**Sources:**")
+                for i, source in enumerate(response.sources, 1):
+                    render_source(source, i)
                 
-                st.success("Answer:")
-                st.write(result['result'])
+                st.caption(f"Retrieved: {response.metadata.get('retrieved_count', 0)} | "
+                          f"Reranked: {response.metadata.get('reranked_count', 0)}")
                 
-                with st.expander("View Sources"):
-                    doctypes = [doc.metadata.get('doctype') for doc in result['source_documents']]
-                    st.write(f"Types: {', '.join(set(doctypes))}")
-
-
-# RAG 3
-# RAG 3
-elif demo_mode == "RAG 3: Sensor Fusion":
-    st.header("RAG 3: Sensor-Fusion Analysis")
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response.answer,
+                    "sources": response.sources
+                })
+                
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    if st.button("👍 Helpful", key=f"up_{len(st.session_state.messages)}"):
+                        if tracer:
+                            tracer.score_feedback(1.0, "user_feedback")
+                        st.success("Feedback recorded!")
+                
+                with col2:
+                    if st.button("👎 Not Helpful", key=f"down_{len(st.session_state.messages)}"):
+                        if tracer:
+                            tracer.score_feedback(0.0, "user_feedback")
+                        st.info("Feedback recorded!")
+            
+            except RetrievalError as e:
+                st.error(f"Retrieval failed: {e}")
+            except GenerationError as e:
+                st.error(f"Generation failed: {e}")
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
     
-    # Load sensor data
-    sensor_df = pd.read_csv('data/sensor_log.csv')
-    defects = sensor_df[sensor_df['defect_type'] != 'none']
-    
-    st.subheader("Defect Events")
-    st.dataframe(defects[['timestamp', 'defect_type', 'rpm', 'force_kn', 'temperature_c']])
-    
-    selected_idx = st.selectbox(
-        "Select defect:",
-        defects.index,
-        format_func=lambda x: f"{defects.loc[x, 'timestamp']} - {defects.loc[x, 'defect_type']}"
-    )
-    
-    if st.button("Analyze", key="btn3"):
-        event = sensor_df.iloc[selected_idx]
+    with st.sidebar:
+        st.header("System Configuration")
+        st.metric("Model", config.model_name.split("/")[-1])
+        st.metric("Temperature", config.temperature)
+        st.metric("Retrieval K", config.retrieval_k)
+        st.metric("Rerank Top K", config.rerank_top_k)
         
-        violations = []
-        if event['rpm'] > THRESHOLDS['rpm_max']:
-            violations.append(f"RPM {event['rpm']} exceeds max {THRESHOLDS['rpm_max']}")
-        if event['force_kn'] > THRESHOLDS['force_max_kn']:
-            violations.append(f"Force {event['force_kn']}kN exceeds max {THRESHOLDS['force_max_kn']}kN")
-        if event['temperature_c'] > THRESHOLDS['temp_max_c']:
-            violations.append(f"Temperature {event['temperature_c']}C exceeds max {THRESHOLDS['temp_max_c']}C")
+        if config.langfuse_enabled:
+            st.success("Langfuse Tracing: Enabled")
+        else:
+            st.info("Langfuse Tracing: Disabled")
         
-        st.warning("Violations:")
-        for v in violations:
-            st.write(f"- {v}")
-        
-        start_idx = max(0, selected_idx - 2)
-        end_idx = min(len(sensor_df), selected_idx + 3)
-        context_data = sensor_df.iloc[start_idx:end_idx]
-        
-        sensor_context = f"""
-Defect Type: {event['defect_type']}
-Time: {event['timestamp']}
-Threshold Violations:
-{chr(10).join(f'  - {v}' for v in violations)}
+        if st.button("Clear Chat History"):
+            st.session_state.messages = []
+            st.rerun()
 
-Recent Sensor Readings:
-{context_data.to_string(index=False)}
-"""
-        
-        question = f"""Based on the following sensor data, explain why a {event['defect_type']} defect occurred:
 
-{sensor_context}
-
-What is the root cause according to FSW standards?"""
-        
-        with st.spinner("Analyzing..."):
-            llm = get_llm()
-            
-            prompt_template = '''You are an FSW defect analysis expert. Use the document context to explain the defect based on the sensor data in the question.
-
-Context: {context}
-
-Question: {question}
-
-Provide a technical root cause explanation:'''
-            
-            PROMPT = PromptTemplate(
-                template=prompt_template,
-                input_variables=['context', 'question']
-            )
-            
-            qa_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                chain_type='stuff',
-                retriever=st.session_state.vectorstore.as_retriever(search_kwargs={'k': 3}),
-                chain_type_kwargs={'prompt': PROMPT},
-                return_source_documents=True
-            )
-            
-            result = qa_chain.invoke({'query': question})
-            
-            with st.expander("Debug: Retrieved Context"):
-                st.write("Question sent to LLM:")
-                st.code(question)
-                st.write(f"Retrieved {len(result['source_documents'])} chunks:")
-                for i, doc in enumerate(result['source_documents'], 1):
-                    st.write(f"Chunk {i}: (from {doc.metadata.get('doctype', 'unknown')})")
-                    st.text(doc.page_content[:400])
-                    st.markdown("---")
-            
-            st.success("Root Cause:")
-            st.write(result['result'])
-            
-            doctypes = [doc.metadata.get('doctype', 'unknown') 
-                       for doc in result['source_documents']]
-            st.info(f"Sources: {', '.join(set(doctypes))}")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("[GitHub Repo](https://github.com/SkullKrak7/RAG_Demo)")
+if __name__ == "__main__":
+    main()
