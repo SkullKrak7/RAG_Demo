@@ -1,5 +1,10 @@
 # FSW RAG Demo: Production-Grade Friction Stir Welding Defect Analysis
 
+[![CI Pipeline](https://github.com/SkullKrak7/RAG_Demo/actions/workflows/ci.yml/badge.svg)](https://github.com/SkullKrak7/RAG_Demo/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/SkullKrak7/RAG_Demo)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+
 Enterprise-grade Retrieval-Augmented Generation (RAG) system for intelligent defect analysis in Friction Stir Welding (FSW) processes.
 
 ## Features
