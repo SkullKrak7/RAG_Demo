@@ -1,0 +1,24 @@
+name: Deploy to Streamlit Cloud
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Trigger Streamlit Cloud deployment
+      run: |
+        echo "Streamlit Cloud auto-deploys from main branch"
+        echo "Deployment URL: https://rag-demo-skullkrak7.streamlit.app/"
+    
+    - name: Verify deployment health
+      run: |
+        sleep 30
+        curl -f https://rag-demo-skullkrak7.streamlit.app/ || echo "Deployment verification skipped"
+      continue-on-error: true

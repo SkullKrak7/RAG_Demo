@@ -10,11 +10,11 @@ from rag_demo.core.exceptions import RetrievalError
 
 class Reranker:
     """Rerank documents using cross-encoder model."""
-    
+
     def __init__(self, config: RAGConfig):
         self.config = config
         self._model = None
-    
+
     def _get_model(self) -> CrossEncoder:
         """Initialize cross-encoder model."""
         if self._model is None:
@@ -22,38 +22,33 @@ class Reranker:
                 self._model = CrossEncoder(self.config.reranker_model)
             except Exception as e:
                 raise RetrievalError(f"Failed to initialize reranker: {e}")
-        
+
         return self._model
-    
-    def rerank(
-        self,
-        query: str,
-        documents: List[Document],
-        top_k: int = None
-    ) -> List[Document]:
+
+    def rerank(self, query: str, documents: List[Document], top_k: int = None) -> List[Document]:
         """Rerank documents by relevance to query."""
         if not documents:
             return []
-        
+
         try:
             model = self._get_model()
             top_k = top_k or self.config.retrieval_k
-            
+
             pairs = [[query, doc.page_content] for doc in documents]
             scores = model.predict(pairs)
-            
+
             doc_scores = list(zip(documents, scores))
             doc_scores.sort(key=lambda x: x[1], reverse=True)
-            
+
             reranked = []
             for doc, score in doc_scores[:top_k]:
                 doc.metadata["rerank_score"] = float(score)
                 reranked.append(doc)
-            
+
             return reranked
         except Exception as e:
             raise RetrievalError(f"Reranking failed: {e}")
-    
+
     def score_pairs(self, query: str, texts: List[str]) -> List[float]:
         """Score query-text pairs without document wrapping."""
         try:
