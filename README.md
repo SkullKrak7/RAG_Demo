@@ -11,7 +11,8 @@ Enterprise-grade Retrieval-Augmented Generation (RAG) system for intelligent def
 
 - Hybrid Retrieval: BM25 + vector search with cross-encoder reranking
 - Streaming Responses: Real-time LLM output with HuggingFace API
-- Conversation Memory: Context-aware multi-turn conversations (last 3 turns)
+- Conversation Memory: Context-aware multi-turn conversations (last 10 turns)
+- Memory Counter: Visual indicator showing remaining context window
 - Sensor Data Integration: Real-time FSW sensor analysis with defect correlation
 - Source Attribution: Full citation tracking with relevance scores
 - Observability: Langfuse integration for tracing and monitoring

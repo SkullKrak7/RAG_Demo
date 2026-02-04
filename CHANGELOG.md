@@ -5,18 +5,21 @@ All notable changes to this project will be documented in this file.
 ## [1.1.0] - 2026-02-04
 
 ### Added
-- Conversation memory with context-aware multi-turn conversations (last 3 turns)
+- Conversation memory with context-aware multi-turn conversations (last 10 turns)
+- Memory retention counter in sidebar showing remaining context window
+- Visual indicators for memory status (active/warning)
 - Sensor data integration for real-time FSW process monitoring
 - Sensor-based defect correlation and analysis
 - Session management with temporary in-memory storage
 - Clear conversation button for privacy
 - Session ID tracking for debugging
+- Message and question counters
 
 ### Changed
 - Updated UI to display conversation history
 - Enhanced query augmentation with conversation context
 - Added sensor data summary in relevant queries
-- Improved sidebar with session information
+- Improved sidebar with session information and memory metrics
 
 ### Privacy
 - All conversation data stored in-memory only (Streamlit session_state)
