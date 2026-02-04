@@ -13,7 +13,7 @@ from rag_demo.observability.tracer import RAGTracer
 
 st.set_page_config(
     page_title="FSW Defect Analysis RAG",
-    page_icon="🔧",
+    page_icon="⚙",
     layout="wide"
 )
 
@@ -53,7 +53,7 @@ def render_source(source, index):
 
 def main():
     """Main Streamlit application."""
-    st.title("🔧 FSW Defect Analysis RAG System")
+    st.title("FSW Defect Analysis RAG System")
     st.markdown("Ask questions about friction stir welding defects, root causes, and corrective actions.")
     
     try:

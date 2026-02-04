@@ -4,12 +4,12 @@ Enterprise-grade Retrieval-Augmented Generation (RAG) system for intelligent def
 
 ## Features
 
-- **Hybrid Retrieval**: BM25 + vector search with cross-encoder reranking
-- **Streaming Responses**: Real-time LLM output with HuggingFace API
-- **Source Attribution**: Full citation tracking with relevance scores
-- **Observability**: Langfuse integration for tracing and monitoring
-- **Modular Architecture**: Clean separation of concerns with 100% test coverage
-- **Production Ready**: Error handling, validation, and graceful degradation
+- Hybrid Retrieval: BM25 + vector search with cross-encoder reranking
+- Streaming Responses: Real-time LLM output with HuggingFace API
+- Source Attribution: Full citation tracking with relevance scores
+- Observability: Langfuse integration for tracing and monitoring
+- Modular Architecture: Clean separation of concerns with 100% test coverage
+- Production Ready: Error handling, validation, and graceful degradation
 
 ## Quick Start
 
@@ -196,24 +196,24 @@ mypy rag_demo/
 
 ### Completed Features
 
-- ✅ Modular RAG architecture
-- ✅ Hybrid retrieval (BM25 + vector)
-- ✅ Cross-encoder reranking
-- ✅ Streaming LLM responses
-- ✅ Source attribution and citations
-- ✅ Langfuse observability
-- ✅ Vector store builder
-- ✅ Streamlit UI
-- ✅ 100% test coverage on core modules
+- Modular RAG architecture
+- Hybrid retrieval (BM25 + vector)
+- Cross-encoder reranking
+- Streaming LLM responses
+- Source attribution and citations
+- Langfuse observability
+- Vector store builder
+- Streamlit UI
+- 100% test coverage on core modules
 
 ### Roadmap
 
-- ⏳ CI/CD pipeline (GitHub Actions)
-- ⏳ Integration tests
-- ⏳ RAGAS evaluation framework
-- ⏳ Performance monitoring
-- ⏳ API documentation
-- ⏳ Docker deployment
+- CI/CD pipeline (GitHub Actions)
+- Integration tests
+- RAGAS evaluation framework
+- Performance monitoring
+- API documentation
+- Docker deployment
 
 ## Technical Specifications
 

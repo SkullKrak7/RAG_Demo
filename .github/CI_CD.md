@@ -130,16 +130,16 @@ Configure in GitHub repository settings:
 
 Recommended settings for `main` branch:
 
-- ✅ Require pull request reviews (1 approver)
-- ✅ Require status checks to pass
+- Require pull request reviews (1 approver)
+- Require status checks to pass
   - `test (3.11)`
   - `test (3.12)`
   - `lint`
   - `security`
-- ✅ Require branches to be up to date
-- ✅ Require conversation resolution
-- ❌ Allow force pushes
-- ❌ Allow deletions
+- Require branches to be up to date
+- Require conversation resolution
+- Do not allow force pushes
+- Do not allow deletions
 
 ## Coverage Reports
 
