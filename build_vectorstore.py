@@ -1,49 +1,50 @@
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+"""CLI script for building vector store from PDFs."""
 
-def build_vectorstore():
-    """Build vector store once and persist it"""
-    documents = []
+import argparse
+from pathlib import Path
 
-    pdf_files = [
-        'fsw_doc1.pdf',  # ISO 25239-5
-        'fsw_doc2.pdf',  # FSW-Tech Handbook
-        'fsw_doc3.pdf',  # Defects Review
-        'fsw_doc4.pdf',  # PhD Thesis
-        'fsw_doc5.pdf'   # NDE Paper
-    ]
+from rag_demo.core.config import RAGConfig
+from rag_demo.ingestion.builder import VectorStoreBuilder
 
-    for pdf_file in pdf_files:
-        print(f"Loading {pdf_file}...")
-        loader = PyPDFLoader(f'data/{pdf_file}')
-        docs = loader.load()
-        print(f"  → Loaded {len(docs)} pages")
-        documents.extend(docs)
-        
+
+def main():
+    """Build vector store from PDF directory."""
+    parser = argparse.ArgumentParser(
+        description="Build vector store from FSW PDF documents"
+    )
+    parser.add_argument(
+        "--pdf-dir",
+        type=str,
+        required=True,
+        help="Directory containing PDF files"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="./vectorstore",
+        help="Output directory for vector store (default: ./vectorstore)"
+    )
+    
+    args = parser.parse_args()
+    
+    config = RAGConfig()
+    builder = VectorStoreBuilder(config)
+    
+    print(f"Loading PDFs from: {args.pdf_dir}")
+    documents = builder.load_pdfs(args.pdf_dir)
     print(f"Loaded {len(documents)} pages")
     
-    # Split
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
-    )
-    chunks = text_splitter.split_documents(documents)
+    print(f"Splitting documents (chunk_size={config.chunk_size}, overlap={config.chunk_overlap})")
+    chunks = builder.split_documents(documents)
     print(f"Created {len(chunks)} chunks")
     
-    # Create vector store with faster embeddings
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-MiniLM-L3-v2"  # Faster, smaller
-    )
+    print(f"Building vector store with {config.embedding_model}")
+    vectorstore = builder.build_vectorstore(chunks, args.output_dir)
+    print(f"Vector store saved to: {args.output_dir}")
+    print(f"Total documents in store: {vectorstore._collection.count()}")
     
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory="./vectorstore"  # Save to disk
-    )
-    
-    print("Vector store saved to ./vectorstore")
+    print("\nVector store build complete!")
+
 
 if __name__ == "__main__":
-    build_vectorstore()
+    main()

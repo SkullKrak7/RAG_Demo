@@ -1,23 +1,77 @@
-﻿# Virtual environments
-venv/
-venv312/
-rag-demo/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
 
-# Vector databases
-.chromadb/
-.chromadb_multi/
-.chromadb_sensor/
-faiss_index/
-
-# Environment
-.env
-*.pkl
+# Virtual environments
+venv/
+venv*/
+env/
+ENV/
+.venv/
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# ChromaDB persistence files
+# Environment & Secrets
+.env
+.env.local
+*.key
+*.pem
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# Vector databases & Caches
+chroma_db/
+.chromadb/
+.chromadb_multi/
+.chromadb_sensor/
+vectorstore/
+faiss_index/
 *.sqlite3
+*.db
+
+# Model artifacts
+*.pkl
+*.h5
+*.pt
+*.pth
+*.onnx
+*.bin
+
+# Logs & Monitoring
+*.log
+logs/
+.langfuse/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Downloaded packages
+/tmp/
+*.whl
+*.tar.gz
