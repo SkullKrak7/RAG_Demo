@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  rag-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+      - LANGFUSE_ENABLED=${LANGFUSE_ENABLED:-false}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+    volumes:
+      - ./data:/app/data:ro
+      - ./vectorstore:/app/vectorstore:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Vector store builder service
+  vectorstore-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./data:/app/data:ro
+      - ./vectorstore:/app/vectorstore
+    command: python build_vectorstore.py --pdf-dir /app/data --output-dir /app/vectorstore
+    profiles:
+      - build
