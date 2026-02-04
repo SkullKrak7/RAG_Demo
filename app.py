@@ -29,12 +29,7 @@ def initialize_system(_config):
     """Initialize RAG system components."""
     builder = VectorStoreBuilder(_config)
     
-    vectorstore = builder.load_vectorstore()
-    
-    documents = []
-    for doc_id in vectorstore.get()["ids"]:
-        doc = vectorstore.get(ids=[doc_id])
-        documents.append(doc)
+    vectorstore, documents = builder.load_vectorstore()
     
     retriever = HybridRetriever(vectorstore, documents, _config)
     
