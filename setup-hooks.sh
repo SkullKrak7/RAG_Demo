@@ -10,6 +10,11 @@ cat > "$HOOK_FILE" << 'EOF'
 
 set -e
 
+# Activate virtual environment if it exists
+if [ -d "venv/bin" ]; then
+    source venv/bin/activate
+fi
+
 echo "Running pre-commit checks..."
 
 # Format check
