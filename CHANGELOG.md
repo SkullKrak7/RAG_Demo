@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-02-04
+
+### Fixed
+- Updated LLM generator to use ChatHuggingFace wrapper for HuggingFace Inference API compatibility
+- Fixed "not supported for task text-generation" error by using conversational task format
+- Added rank-bm25 dependency for hybrid retrieval BM25 component
+
+### Changed
+- Generator now wraps HuggingFaceEndpoint with ChatHuggingFace for proper chat format
+- Updated tests to mock ChatHuggingFace wrapper correctly
+- Improved test coverage to 96.19%
+
 ## [1.0.0] - 2026-02-04
 
 ### Added
